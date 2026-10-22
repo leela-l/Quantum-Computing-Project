@@ -35,7 +35,8 @@ def step(psi, t, dt):
 
 
 steps = 2000
-times = np.linspace(0, 1e-6, steps + 1)
+t_max = 1e-6
+times = np.linspace(0, t_max, steps + 1)
 dt = times[1] - times[0] #time between steps
 
 psi = psi0.copy() #Add .copy() just for saftey in future
