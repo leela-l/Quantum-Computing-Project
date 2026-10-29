@@ -3,61 +3,95 @@ from numpy.linalg import eigh
 import matplotlib.pyplot as plt
 #Initial code to solve 1D t-indep shcrodinger
 
-def evolve_Delta(Delta0, t):
-    """Linear sweep through resonance"""
-    return Delta0
+
+def Delta(t):
+    return 0.0*t
 
 
-def H(Omega, Delta, V, Phi_L):
+def Omega(delta):
+    return np.pi * 1e6 + 0 * delta
+
+
+def H(V, t):
+    delta = Delta(t)
+    omega = Omega(delta)
     H_matrix= hbar * np.array([
-        [2*Delta,                   Omega*np.exp(-1j*Phi_L),    Omega*np.exp(-1j*Phi_L),      0                          ],
-        [Omega*np.exp(1j*Phi_L),    0,                          0,                            Omega*np.exp(-1j*Phi_L)    ],
-        [Omega*np.exp(1j*Phi_L),    0,                          0,                            Omega*np.exp(-1j*Phi_L)    ],
-        [0,                         Omega*np.exp(1j*Phi_L),     Omega*np.exp(1j*Phi_L),       -2*Delta + 2*V             ],
+        [2*delta,                   omega*np.exp(-1j*Phi_L),    omega*np.exp(-1j*Phi_L),      0                          ],
+        [omega*np.exp(1j*Phi_L),    0,                          0,                            omega*np.exp(-1j*Phi_L)    ],
+        [omega*np.exp(1j*Phi_L),    0,                          0,                            omega*np.exp(-1j*Phi_L)    ],
+        [0,                         omega*np.exp(1j*Phi_L),     omega*np.exp(1j*Phi_L),       -2*delta + 2*V             ],
         ], dtype=complex)
     return H_matrix
 
 
-def step(Omega, Delta0, Phi_L, psi, t, dt):
-    """Evolve psi from t to t+dt, assuming H as const over the step."""
-    D_intermediate = evolve_Delta(Delta0, t+dt/2)
-    # Using dt/2 rather than dt makes error per step smaller
-    eigvals, R_dagger = eigh(H(Omega, D_intermediate, V, Phi_L)) # decided function is not needed
-    D = np.diag(np.exp(-1j * eigvals * dt / hbar))
-    return R_dagger @ D @ R_dagger.conj().T @ psi
+def step(H_matrix, psi, dt):
+    eigvals, R_dagger = eigh(H_matrix)
+    D = np.diag(np.exp(-1j * eigvals * dt / hbar)) # diagonal matrix with
+    R = R_dagger.conj().T #rows = conjugated eigenvectors
+    return R_dagger @ D @ R @ psi
 
 
-#placeholder values for now (change to real val)
-hbar = 1
-Omega = np.pi*10**6
-Delta0 = 5*Omega
-V = 2*np.pi*10*1e6 
+def evolve(times, V):
+    psi = psi0.copy()
+    states = [psi0]
+
+    for i in range(len(times)-1):
+        t_mid = times[i] + dt/2
+        psi = step(H(V, t_mid), psi, dt)
+        states.append(psi)
+
+    return np.array(states)
+
+
+
+
+def bell_fidelity(psi_t):
+    return np.abs(psi_t @ bell_state.conj())**2
+
+
+
+Omega0= np.pi*10**6
+Delta0 = 0
 Phi_L = 1
+hbar = 1
 
 psi0 = np.array([1, 0, 0, 0], dtype=complex) #initial state in |00>
+bell_state = np.array([0, 1, 1, 0], dtype=complex) / np.sqrt(2)   # (|01> + |10>)/sqrt2
+
+
+V_max = 40*Omega0
+V_values = np.linspace(0, V_max, 500)
+#range of V's to show spread
+
+
+#list of times to look at system (frames of animation)
+steps = 200
+times = np.linspace(0, 10**-6, steps)
+
+dt = times[1]-times[0]
+
+# PLOT
+fig, (ax1, ax2) = plt.subplots(2,1, figsize=(10,5), sharex=True)
+
+psi_t = evolve(times, 0)
+ax1.plot(times*1e6, np.abs(psi_t[:, 0])**2, color="c", lw = 2)
+ax2.plot(times*1e6, bell_fidelity(psi_t), color="c", lw = 2)
+
+
+for V in V_values[1:]:
+    psi_t = evolve(times, V)
+    alpha = 0.05 + 0.95 * (V / V_max) #colour gets darker for larger V
+    ax1.plot(times*1e6, np.abs(psi_t[:, 0])**2, color="mediumvioletred", alpha = alpha, lw=1)
+    ax2.plot(times*1e6, bell_fidelity(psi_t), color="mediumvioletred", alpha = alpha, lw=1)
 
 
 
+ax1.set_xlim(0, 1)
+ax1.set_ylim(0, 1)
+ax2.set_xlim(0, 1)
+ax2.set_ylim(0, 1)
 
-steps = 2000
-t_max = 1e-6
-times = np.linspace(0, t_max, steps + 1)
-dt = times[1] - times[0] #time between steps
-
-psi = psi0.copy() #Add .copy() just for saftey in future
-probs = np.zeros((steps + 1, 4)) #defines empty array to fill during iterations
-probs[0] = np.abs(psi)**2
-bell_probs = np.zeros((steps + 1, 4)) #defines empty array to fill during iterations
-bell_probs[0] = 0
-
-for i in range(steps):
-    psi = step(Omega, V, Phi_L, psi, times[i], dt)
-    probs[i + 1] = np.abs(psi)**2 #adds new prob to array
-    probs[i+1] = np.abs(psi)**2
-
-
-#[: (all rows), x (in this column)]
-fig, ax = plt.subplots()
-ax.plot(times*1e6, probs[:, 0], label=r"$P_{|00\rangle}$")
-ax.set_xlabel("Time (µs)"); ax.set_ylabel("Probability"); ax.legend()
+ax2.set_xlabel("Time (µs)")
+ax1.set_ylabel(r"$P_{|00\rangle}$")
+ax2.set_ylabel(r"$\psi^+$")
 plt.show()

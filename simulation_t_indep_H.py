@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 #Initial code to solve 1D t-indep shcrodinger
 
 
-def H(Omega, Delta, V, Phi_L):
+def H(V):
     H_matrix= hbar * np.array([
         [2*Delta,                   Omega*np.exp(-1j*Phi_L),    Omega*np.exp(-1j*Phi_L),      0                          ],
         [Omega*np.exp(1j*Phi_L),    0,                          0,                            Omega*np.exp(-1j*Phi_L)    ],
@@ -50,10 +50,9 @@ times = np.linspace(0, 10**-6, steps)
 
 
 # PLOT
-fig, (ax1, ax2) = plt.subplots(2,1, figsize=(10,5), sharex=True,
-    gridspec_kw={'height_ratios':[1,1]})
+fig, (ax1, ax2) = plt.subplots(2,1, figsize=(10,5), sharex=True)
 
-psi_t = np.array([evolve(H(Omega, Delta, 0, Phi_L), psi0, t) for t in times])
+psi_t = np.array([evolve(H(0), psi0, t) for t in times])
 ax1.plot(times*1e6, np.abs(psi_t[:, 0])**2, color="c", lw = 2)
 ax2.plot(times*1e6, bell_fidelity(psi_t), color="c", lw = 2)
 
@@ -61,7 +60,7 @@ ax2.plot(times*1e6, bell_fidelity(psi_t), color="c", lw = 2)
 
 #indexing for 1 till end of array bc first one should be blue (Fig 5.1)
 for V in V_values[1:]:
-    psi_t = np.array([evolve(H(Omega, Delta, V, Phi_L), psi0, t) for t in times])
+    psi_t = np.array([evolve(H(V), psi0, t) for t in times])
     #Scale time axis *1e6
     #abs**2 is probability
     alpha = 0.05 + 0.95 * (V / V_max) #colour gets darker for larger V
